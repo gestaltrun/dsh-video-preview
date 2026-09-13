@@ -1,22 +1,29 @@
 {
-  "name": "dsh-video-preview",
-  "version": "0.1.4",
-  "description": "Inline video preview for dsh-better-sidebar: plays .mp4/.webm/.mov/.mkv/.avi etc. in the sidebar editor with HTTP Range (seeking) support via a dedicated /video host route",
+  "name": "@gestaltrun/dsh-video-preview",
+  "version": "0.1.5-gestaltrun.0",
+  "description": "Read-only video viewer for the Gestaltrun DSH sidebar with authorized HTTP Range streaming.",
   "type": "module",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
   "files": [
-    "index.js",
-    "client.js",
+    "lib/**/*.js",
+    "lib/**/*.js.map",
+    "lib/**/*.d.ts",
+    "lib/**/*.d.ts.map",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE",
-    "test"
+    "LICENSE"
   ],
   "exports": {
-    ".": "./index.js",
-    "./client": {
-      "default": "./client.js"
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
     },
+    "./client": {
+      "types": "./lib/types/client.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "keywords": [
@@ -30,16 +37,16 @@
   ],
   "license": "MIT",
   "author": "zemul <zemul@foxmail.com>",
-  "homepage": "https://github.com/zemul/dsh-video-preview",
+  "homepage": "https://github.com/gestaltrun/dsh-video-preview",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zemul/dsh-video-preview.git"
+    "url": "https://github.com/gestaltrun/dsh-video-preview"
   },
   "bugs": {
-    "url": "https://github.com/zemul/dsh-video-preview/issues"
+    "url": "https://github.com/gestaltrun/dsh-video-preview/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": "^22.19.0 || >=24.0.0"
   },
   "dsh": {
     "bundle": {
@@ -47,9 +54,58 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime"
+        "@deepseek-ai/dsh-client-locale",
+        "@gestaltrun/dsh-better-sidebar"
       ],
       "platform": "web"
+    },
+    "engines": {
+      "dsh": ">=0.1.5-rc.2"
     }
-  }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-session": "0.1.5-rc.2",
+    "@gestaltrun/dsh-better-sidebar": "0.19.1-gestaltrun.0",
+    "react": "18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-session": "0.1.5-rc.2",
+    "@gestaltrun/dsh-better-sidebar": "0.19.1-gestaltrun.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "~18.3.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tsdown": "^0.22.2",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.8"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "release:pack": "node scripts/release-package.mjs pack",
+    "release:publish": "node scripts/release-package.mjs publish",
+    "prepublishOnly": "node scripts/release-package.mjs guard",
+    "test:release": "node --test tests/release-package.test.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "candidate"
+  },
+  "packageManager": "pnpm@11.8.0"
 }

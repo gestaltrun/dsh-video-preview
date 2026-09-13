@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+      - name: Fetch exact Sidebar build input
+        id: sidebar
+        run: |
+          mkdir -p "$RUNNER_TEMP/sidebar-input"
+          npm pack @gestaltrun/dsh-better-sidebar@0.19.1-gestaltrun.0 --pack-destination "$RUNNER_TEMP/sidebar-input"
+          echo "path=$RUNNER_TEMP/sidebar-input/gestaltrun-dsh-better-sidebar-0.19.1-gestaltrun.0.tgz" >> "$GITHUB_OUTPUT"
+      - name: Build, test, and verify package
+        run: >-
+          pnpm run release:pack --
+          --out "$RUNNER_TEMP/dsh-video-preview"
+          --sidebar-tarball "${{ steps.sidebar.outputs.path }}"
