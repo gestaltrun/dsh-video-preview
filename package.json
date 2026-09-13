@@ -70,7 +70,7 @@
     "@deepseek-ai/dsh-host-webserver": "0.1.5-rc.2",
     "@deepseek-ai/dsh-session": "0.1.5-rc.2",
     "@gestaltrun/dsh-better-sidebar": "0.19.1-gestaltrun.0",
-    "react": "18.2.0"
+    "react": "^18.2.0"
   },
   "peerDependenciesMeta": {
     "react": {

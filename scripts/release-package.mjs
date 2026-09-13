@@ -24,6 +24,7 @@ export function assertPackage(manifest, packed = false) {
   }
   if (manifest.publishConfig?.tag !== 'candidate') throw new Error('Prereleases must use the candidate tag')
   if (manifest.peerDependencies?.[SIDEBAR_NAME] !== SIDEBAR_VERSION) throw new Error('Sidebar peer must be pinned exactly')
+  if (manifest.peerDependencies?.react !== '^18.2.0') throw new Error('React peer must accept the DSH React 18 cohort')
   for (const name of ['preinstall', 'install', 'postinstall', 'prepare']) {
     if (name in (manifest.scripts ?? {})) throw new Error(`Install lifecycle ${name} is forbidden`)
   }
