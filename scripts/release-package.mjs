@@ -2,10 +2,11 @@
 /** Build, verify, and optionally publish the Gestaltrun video viewer. */
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { gunzipSync } from 'node:zlib'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 export const PACKAGE_NAME = '@gestaltrun/dsh-video-preview'
@@ -80,6 +81,27 @@ function tarballName(manifest) {
   return `${manifest.name.replace(/^@/u, '').replace('/', '-')}-${manifest.version}.tgz`
 }
 
+/** Normalize npm's host-specific gzip byte while proving the tar stays unchanged. */
+export function normalizeGzipPlatform(input) {
+  if (!Buffer.isBuffer(input) || input.length < 18) throw new Error('Packed archive has a truncated gzip header or trailer')
+  if (input[0] !== 0x1f || input[1] !== 0x8b || input[2] !== 8) throw new Error('Packed archive must use gzip deflate')
+  if (input[3] !== 0) throw new Error('Packed archive must not use optional gzip headers')
+  let tar
+  try {
+    tar = gunzipSync(input)
+  } catch (error) {
+    throw new Error('Packed archive has an invalid gzip payload or trailer', { cause: error })
+  }
+  const normalized = Buffer.from(input)
+  normalized[9] = 255
+  if (!gunzipSync(normalized).equals(tar)) throw new Error('Gzip platform normalization changed the packed tar')
+  return normalized
+}
+
+function normalizePackedArchive(path) {
+  writeFileSync(path, normalizeGzipPlatform(readFileSync(path)))
+}
+
 function pack(manifest, inputs) {
   installBuildGraph(inputs.sidebar)
   runPnpm(['run', 'build'])
@@ -90,6 +112,7 @@ function pack(manifest, inputs) {
   const tarball = join(inputs.out, tarballName(manifest))
   if (existsSync(tarball)) throw new Error(`Artifact already exists: ${tarball}`)
   runPnpm(['pack', '--pack-destination', inputs.out])
+  normalizePackedArchive(tarball)
   const packed = JSON.parse(execFileSync('tar', ['-xOzf', tarball, 'package/package.json'], { encoding: 'utf8' }))
   assertPackage(packed, true)
   const files = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' }).split('\n')
