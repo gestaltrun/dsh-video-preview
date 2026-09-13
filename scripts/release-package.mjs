@@ -3,12 +3,14 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { gunzipSync } from 'node:zlib'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const require = createRequire(import.meta.url)
 export const PACKAGE_NAME = '@gestaltrun/dsh-video-preview'
 export const REPOSITORY = 'gestaltrun/dsh-video-preview'
 export const SIDEBAR_NAME = '@gestaltrun/dsh-better-sidebar'
@@ -26,6 +28,7 @@ export function assertPackage(manifest, packed = false) {
   if (manifest.publishConfig?.tag !== 'candidate') throw new Error('Prereleases must use the candidate tag')
   if (manifest.peerDependencies?.[SIDEBAR_NAME] !== SIDEBAR_VERSION) throw new Error('Sidebar peer must be pinned exactly')
   if (manifest.peerDependencies?.react !== '^18.2.0') throw new Error('React peer must accept the DSH React 18 cohort')
+  if (manifest.devDependencies?.fflate !== '0.8.3') throw new Error('Archive canonicalization requires fflate@0.8.3')
   for (const name of ['preinstall', 'install', 'postinstall', 'prepare']) {
     if (name in (manifest.scripts ?? {})) throw new Error(`Install lifecycle ${name} is forbidden`)
   }
@@ -81,8 +84,8 @@ function tarballName(manifest) {
   return `${manifest.name.replace(/^@/u, '').replace('/', '-')}-${manifest.version}.tgz`
 }
 
-/** Normalize npm's host-specific gzip byte while proving the tar stays unchanged. */
-export function normalizeGzipPlatform(input) {
+/** Recompress npm's archive deterministically while proving the tar stays unchanged. */
+export function canonicalizeArchive(input) {
   if (!Buffer.isBuffer(input) || input.length < 18) throw new Error('Packed archive has a truncated gzip header or trailer')
   if (input[0] !== 0x1f || input[1] !== 0x8b || input[2] !== 8) throw new Error('Packed archive must use gzip deflate')
   if (input[3] !== 0) throw new Error('Packed archive must not use optional gzip headers')
@@ -92,14 +95,18 @@ export function normalizeGzipPlatform(input) {
   } catch (error) {
     throw new Error('Packed archive has an invalid gzip payload or trailer', { cause: error })
   }
-  const normalized = Buffer.from(input)
-  normalized[9] = 255
-  if (!gunzipSync(normalized).equals(tar)) throw new Error('Gzip platform normalization changed the packed tar')
-  return normalized
+  const { gzipSync } = require('fflate')
+  const canonical = Buffer.from(gzipSync(tar, { level: 9, mtime: 0 }))
+  if (canonical.length < 18 || canonical[0] !== 0x1f || canonical[1] !== 0x8b || canonical[2] !== 8 || canonical[3] !== 0) {
+    throw new Error('fflate emitted a non-canonical gzip header')
+  }
+  canonical[9] = 255
+  if (!gunzipSync(canonical).equals(tar)) throw new Error('Archive canonicalization changed the packed tar')
+  return canonical
 }
 
 function normalizePackedArchive(path) {
-  writeFileSync(path, normalizeGzipPlatform(readFileSync(path)))
+  writeFileSync(path, canonicalizeArchive(readFileSync(path)))
 }
 
 function pack(manifest, inputs) {
