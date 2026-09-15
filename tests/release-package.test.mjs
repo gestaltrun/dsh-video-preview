@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { resolve } from 'node:path'
 import { gzipSync, gunzipSync } from 'node:zlib'
 import manifest from '../package.json' with { type: 'json' }
 import { assertPackage, assertPublishContext, canonicalizeArchive, parseInputs } from '../scripts/release-package.mjs'
@@ -17,7 +18,7 @@ test('React 18 compatible peers are required', () => {
 })
 
 test('product packer inputs require absolute output and Sidebar paths', () => {
-  assert.deepEqual(parseInputs(['--out', '/tmp/out', '--sidebar-tarball', '/tmp/sidebar.tgz']), { out: '/tmp/out', sidebar: '/tmp/sidebar.tgz' })
+  assert.deepEqual(parseInputs(['--out', '/tmp/out', '--sidebar-tarball', '/tmp/sidebar.tgz']), { out: resolve('/tmp/out'), sidebar: resolve('/tmp/sidebar.tgz') })
   assert.throws(() => parseInputs(['--out', 'out']), /Usage/u)
 })
 
