@@ -122,7 +122,8 @@ function pack(manifest, inputs) {
   normalizePackedArchive(tarball)
   const packed = JSON.parse(execFileSync('tar', ['-xOzf', tarball, 'package/package.json'], { encoding: 'utf8' }))
   assertPackage(packed, true)
-  const files = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' }).split('\n')
+  const files = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
+    .split(/\r?\n/u).map(entry => entry.trim().replaceAll('\\', '/')).filter(entry => entry.length > 0)
   for (const required of ['package/lib/index.js', 'package/lib/client.js', 'package/cordis.patch.yml', 'package/LICENSE']) {
     if (!files.includes(required)) throw new Error(`Packed artifact omits ${required}`)
   }
